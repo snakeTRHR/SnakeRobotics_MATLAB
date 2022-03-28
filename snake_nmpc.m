@@ -36,7 +36,7 @@ end
 
 %体形曲線の生成
 ini_theta=atan2(nmpc.save_x(2, 2)-nmpc.save_x(1, 2), nmpc.save_x(2, 1)-nmpc.save_x(1, 1));
-snake = SnakeRobot(num_joint, length_quarter, length_section, ini_theta+alpha_yaw, alpha_pitch, dim);
+snake = SnakeRobot(num_joint, length_quarter, ini_theta+alpha_yaw, alpha_pitch, dim);
 snake.changeVel(1);
 curvature_nmpc = 0;
 for i = 4:size(nmpc.save_x, 1)
