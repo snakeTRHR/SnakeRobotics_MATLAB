@@ -12,6 +12,7 @@ snake.changeVel(1);
 %フィールドデータの読み込み
 load fieldDataZ.mat
 
+%目標値と現在地の許容誤差
 error = 1;
 
 while(goal-now<error)
