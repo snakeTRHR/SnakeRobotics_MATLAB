@@ -1,16 +1,14 @@
-%obs=[r, x, y, z]
-obs=[ 4,  5, 0, 0;
-      8, 20, 0, 0;
-     10, 45, 0, 0;
-      8, 70, 0, 0;
-      8, 90, 0, 0];
+%obs2d=[r, x, y]
+obs2d=[ 4, 5, 0;
+        8, 20, 0;
+       10, 45, 0;
+        8, 70, 0;
+        8, 90, 0];
 
-%[-200,-200],[200,200]のフィールド
-map_obs=zeros(400,400);
-offset_x=200;
-offset_y=200;
+map_obs2d=zeros(400, 400);
+offset_x2d=200;
+offset_y2d=200;
 
-%y=y0+sqrt(r^2+(x-x0)^2)
 for i=1:size(obs, 1)
     r=obs(i,1);
     x0=obs(i,2);
@@ -25,6 +23,3 @@ for i=1:size(obs, 1)
         map_obs(x_,y_min_:y_max_)=100;
     end
 end
-surfc(1:400, 1:400, map_obs)
-
-save('fieldDataZObs','map_obs')

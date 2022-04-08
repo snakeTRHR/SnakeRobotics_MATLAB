@@ -144,6 +144,7 @@ classdef SnakeRobot < handle
                 disp(obj.snake_pathlog)
                 plot(obj.snake_pathlog(:,1), obj.snake_pathlog(:,2))
                 grid on
+                axis equal
                 %hold off
             elseif obj.dim == 3
                 plot3(obj.input_pathlog(:,1), obj.input_pathlog(:,2), obj.input_pathlog(:,3))
