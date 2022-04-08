@@ -66,21 +66,22 @@ for i=size(snake.snake_pathlog, 1)
 end
 trajectory_load=trajectory_load(1:end, :);
 %グラフの表示
-% tiledlayout(2, 1)
-% 
-% nexttile
-% plot(snake.snake_pathlog(:,1), snake.snake_pathlog(:,2), 'r')
-% hold on
-% plot(obsData(:,1), obsData(:,2))
-% grid on
-% axis equal
-% title('not activate avoidance')
-% hold off
-% 
-% nexttile
-% plot()
-% grid on
-% title('activate avoidance')
+tiledlayout(2, 1)
+
+nexttile
+plot(snake.snake_pathlog(:, 1), snake.snake_pathlog(:, 2), 'r')
+hold on
+plot(obsData(:, 1), obsData(:, 2),'b')
+grid on
+axis equal
+title('not activate avoidance')
+hold off
+
+nexttile
+plot(trajectory_load(:, 1), trajectory_load(:, 2), 'g')
+axis equal
+grid on
+title('activate avoidance')
 
 %dtheta/dtを決定
 
