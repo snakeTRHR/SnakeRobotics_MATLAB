@@ -46,12 +46,14 @@ for i=1:size(obs2d, 1)
     end
 end
 obsData=obsData(1:end, :);
-
 %負荷グラフの作成
 %trajectory_load=[x, load]
 trajectory_load=[0, 0];
-for i=size(snake.snake_pathlog, 1)
-    if obs_map(round(snake.snake_pathlog(i, 1))+offset_x_obs, round(snake.snake_pathlog(i, 2))+offset_y_obs) == 1
+for i=1:size(snake.snake_pathlog, 1)
+    x_path=round(snake.snake_pathlog(i, 1))+offset_x_obs;
+    y_path=round(snake.snake_pathlog(i, 2))+offset_y_obs;
+    disp([x_path, y_path])
+    if obs_map(x_path, y_path) == 1
         nearest_obs=findNearestObs(obs2d, snake.snake_pathlog(i, 1), snake.snake_pathlog(i, 2));
         r=nearest_obs(1, 1);
         x0=nearest_obs(1, 2);
@@ -66,7 +68,7 @@ for i=size(snake.snake_pathlog, 1)
 end
 trajectory_load=trajectory_load(1:end, :);
 %グラフの表示
-tiledlayout(2, 1)
+tiledlayout(3, 1)
 
 nexttile
 plot(snake.snake_pathlog(:, 1), snake.snake_pathlog(:, 2), 'r')
@@ -78,10 +80,20 @@ title('not activate avoidance')
 hold off
 
 nexttile
+plot(obsData(:, 1), obsData(:, 2),'b')
+hold on
+plot(snake.snake_pathlog(:, 1), snake.snake_pathlog(:, 2), 'r')
 plot(trajectory_load(:, 1), trajectory_load(:, 2), 'g')
 axis equal
 grid on
-title('activate avoidance')
+hold off
+title('load compound')
+
+nexttile
+plot(trajectory_load(:, 1), trajectory_load(:, 2), 'g')
+axis equal
+grid on
+title('load')
 
 %dtheta/dtを決定
 
