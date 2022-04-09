@@ -9,11 +9,9 @@ snake = SnakeRobot(num_joint, length_quarter, alpha_yaw, alpha_pitch, dim);
 snake.changeVel(1);
 
 %障害物の設定
-obs2d=[ 4,  5, 0;
-        8, 20, 0;
-       10, 45, 0;
-        8, 70, 0;
-        8, 90, 0];
+%obs2d=[r, x, y, flag(1:+, -1:-, 0:未定)]
+obs2d=[10, 45, 0, 0;
+        8, 90, 0, 0];
 
 %目標値と現在地の許容誤差
 error = 1;
@@ -45,35 +43,67 @@ for i=1:size(obs2d, 1)
                  x, y_max];
     end
 end
+
 obsData=obsData(1:end, :);
 %負荷グラフの作成
 %trajectory_load=[x, load]
 trajectory_load=[0, 0];
+% for i=1:size(snake.snake_pathlog, 1)
+%     x_path=round(snake.snake_pathlog(i, 1))+offset_x_obs;
+%     y_path=round(snake.snake_pathlog(i, 2))+offset_y_obs;
+%     %disp([x_path-offset_x_obs, y_path-offset_y_obs])
+%     if obs_map(x_path, y_path) == 1
+%         nearest_obs=findNearestObs(obs2d, snake.snake_pathlog(i, 1), snake.snake_pathlog(i, 2));
+%         r=nearest_obs(1, 1);
+%         x0=nearest_obs(1, 2);
+%         y0=nearest_obs(1, 3);
+%         %disp([x0 y0, x_path, y_path])
+%         temp_y=y0+sqrt(r^2-(snake.snake_pathlog(i, 1)-x0)^2);
+%         disp(nearest_obs)
+%         load=temp_y-snake.snake_pathlog(i, 2);
+%     else
+%         load=0;
+%     end
+%     trajectory_load=[trajectory_load; 
+%                      snake.snake_pathlog(i, 1), load];
+% end
 for i=1:size(snake.snake_pathlog, 1)
-    x_path=round(snake.snake_pathlog(i, 1))+offset_x_obs;
-    y_path=round(snake.snake_pathlog(i, 2))+offset_y_obs;
-    disp([x_path, y_path])
-    if obs_map(x_path, y_path) == 1
-        nearest_obs=findNearestObs(obs2d, snake.snake_pathlog(i, 1), snake.snake_pathlog(i, 2));
-        r=nearest_obs(1, 1);
-        x0=nearest_obs(1, 2);
-        y0=nearest_obs(1, 3);
-        temp_y=y0+sqrt(r^2-(i-x0)^2);
-        load=temp_y-snake.snake_pathlog(i, 2);
+    %符号の決定
+    for k=1:size(obs2d, 1)
+        if obs2d(k, 4)==0
+            if snake.snake_pathlog(i, 2)>0
+                obs2d(k, 4)=1;
+            else
+                disp([snake.snake_pathlog(i, 1), snake.snake_pathlog(i, 2)])
+                obs2d(k, 4)=-1;
+            end
+        end
+    end
+    nearest_obs=findNearestObs(obs2d, snake.snake_pathlog(i, 1), snake.snake_pathlog(i, 2));
+    if  nearest_obs(1, 1) == 1
+        r=nearest_obs(1, 2);
+        x0=nearest_obs(1, 3);
+        y0=nearest_obs(1, 4);
+        %disp([x0 y0, x_path, y_path])
+        temp_y=y0+sqrt(r^2-(snake.snake_pathlog(i, 1)-x0)^2);
+%         disp(nearest_obs)
+        load=nearest_obs(1, 5)*(temp_y-snake.snake_pathlog(i, 2));
     else
         load=0;
     end
     trajectory_load=[trajectory_load; 
                      snake.snake_pathlog(i, 1), load];
 end
+disp(obs2d)
 trajectory_load=trajectory_load(1:end, :);
+
 %グラフの表示
 tiledlayout(3, 1)
 
 nexttile
-plot(snake.snake_pathlog(:, 1), snake.snake_pathlog(:, 2), 'r')
-hold on
 plot(obsData(:, 1), obsData(:, 2),'b')
+hold on
+plot(snake.snake_pathlog(:, 1), snake.snake_pathlog(:, 2), 'r')
 grid on
 axis equal
 title('not activate avoidance')
@@ -98,14 +128,25 @@ title('load')
 %dtheta/dtを決定
 
 function ans_obs=findNearestObs(obs_, serpen_x_, serpen_y_)
-    nearest=[0, 0, 0];
-    min_dist=0;
-    for i=1:size(obs_, 1)
+    %nearest=[flag(障害物内に入っているかの判定), obs]
+    dist=sqrt((serpen_x_-obs_(1, 2))^2+(serpen_y_-obs_(1, 3))^2);
+    if dist<obs_(1, 1)
+        nearest=[1, obs_(1,:)];
+    else
+        nearest=[0, obs_(1,:)];
+    end
+    min_dist=sqrt((serpen_x_-obs_(1, 2))^2+(serpen_y_-obs_(1, 3))^2);
+    for i=2:size(obs_, 1)
         dist=sqrt((serpen_x_-obs_(i, 2))^2+(serpen_y_-obs_(i, 3))^2);
         if dist<min_dist
-            nearest=obs_(i, :);
+            if dist<obs_(i, 1)
+                nearest=[1, obs_(i, :)];
+            else
+                nearest=[0, obs_(i, :)];
+            end
             min_dist=dist;
         end
     end
+
     ans_obs=nearest;
 end
