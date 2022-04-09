@@ -137,10 +137,19 @@ for i=1:size(snake.snake_pathlog, 1)
     trajectory_load=[trajectory_load; 
                      snake.snake_pathlog(i, 1), load];
 end
-trajectory_load=trajectory_load(1:end, :);
+trajectory_load=trajectory_load(2:end, :);
+% %一階微分
+% [fx, fy]=gradient(trajectory_load);
+% trajectory_load_diff1=[trajectory_load(:,1), fy(:, 2)];
+% %二階微分
+% [fx, fy]=gradient(trajectory_load_diff1);
+% trajectory_load_diff2=[trajectory_load(:,1), fy(:, 2)];
+
+avoidance_pathlog=snake.snake_pathlog;
+avoidance_pathlog(:, 2)=avoidance_pathlog(:, 2)+trajectory_load(:, 2);
 
 %グラフの表示
-tiledlayout(3, 1)
+tiledlayout(2, 2)
 
 nexttile
 plot(obsData(:, 1), obsData(:, 2),'b')
@@ -167,6 +176,33 @@ axis equal
 grid on
 title('load')
 
+% nexttile
+% trajectory_load_smooth=smoothdata(trajectory_load, 1);
+% plot(trajectory_load_smooth(:, 1), trajectory_load_smooth(:, 2))
+% axis equal
+% grid on
+% title('smooth load')
+
+nexttile
+plot(obsData(:, 1), obsData(:, 2),'b')
+hold on
+plot(avoidance_pathlog(:, 1), avoidance_pathlog(:, 2), 'r')
+axis equal
+grid on
+title('activate avoidance')
+hold off
+
+% nexttile
+% plot(trajectory_load_diff1(:, 1), trajectory_load_diff2(:, 2));
+% axis equal
+% grid on
+% title('trajectory_load_diff1')
+% 
+% nexttile
+% plot(trajectory_load_diff2(:, 1), trajectory_load_diff2(:, 1));
+% axis equal
+% grid on
+% title('trajectory_load_diff2')
 %dtheta/dtを決定
 
 % function ans_obs=findNearestObs(obs_, serpen_x_, serpen_y_)
