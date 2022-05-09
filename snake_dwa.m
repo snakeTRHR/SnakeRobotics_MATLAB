@@ -8,6 +8,9 @@ dim = 2;
 snake = SnakeRobot(num_joint, length_quarter, alpha_yaw, alpha_pitch, dim);
 snake.changeVel(1);
 
+%DWAを用いて経路を生成する
+
+
 for i = 1:20
     snake.updateModel();
 end

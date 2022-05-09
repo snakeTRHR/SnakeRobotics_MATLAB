@@ -138,12 +138,12 @@ for i=1:size(snake.snake_pathlog, 1)
                      snake.snake_pathlog(i, 1), load];
 end
 trajectory_load=trajectory_load(2:end, :);
-% %一階微分
-% [fx, fy]=gradient(trajectory_load);
-% trajectory_load_diff1=[trajectory_load(:,1), fy(:, 2)];
-% %二階微分
-% [fx, fy]=gradient(trajectory_load_diff1);
-% trajectory_load_diff2=[trajectory_load(:,1), fy(:, 2)];
+% % %一階微分
+% dydx = diff(trajectory_load(:,2))./diff(trajectory_load(:,1));
+% plot(trajectory_load(2:end,1),dydx)
+% % %二階微分
+% dydx2 = diff(dydx)./diff(trajectory_load(2:end,1));
+% plot(trajectory_load(3:end,1),dydx2)
 
 avoidance_pathlog=snake.snake_pathlog;
 avoidance_pathlog(:, 2)=avoidance_pathlog(:, 2)+trajectory_load(:, 2);

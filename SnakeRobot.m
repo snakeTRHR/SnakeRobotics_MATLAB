@@ -16,18 +16,31 @@ classdef SnakeRobot < handle
         curvature_yaw = 0;
         curvature_pitch = 0;
         torsion = 0;
-        s=0;
+        s = 0;
         s_vel = 0;
         input_pathlog
         snake_pathlog
         e_rpylog
         %表示をする次元
         dim
+        %離散化データ
+        %各関節角度[x1 y1; x2 y2; ...]
+        joint_rad_y_now = 0;
+        joint_rad_p_now = 0;
+        joint_rad_y_ini = NaN;
+        joint_rad_p_ini = NaN;
+        joint_radlog_y
+        joint_radlog_p
+        pos_discretization
+        s_last = 0;
+        discretization_pathlog
+        
     end
 
     methods
-        function obj = SnakeRobot(num_joint_, length_quater_, alpha_yaw_, alpha_pitch_, dim_)
+        function obj = SnakeRobot(num_joint_, length_joint, length_quater_, alpha_yaw_, alpha_pitch_, dim_)
             obj.num_joint = num_joint_;
+            obj.length_joint = length_joint;
             obj.dim = dim_;
             obj.changeSnakeParam(alpha_yaw_, alpha_pitch_, length_quater_);
             theta_roll = 0;
@@ -46,18 +59,44 @@ classdef SnakeRobot < handle
             elseif obj.dim == 3
                 obj.snake_pathlog = obj.Model_C';
             end
+            %離散モデルと連続体モデルのs=0を原点に一致させる
+            obj.discretization_pathlog=[0, 0, 0];
+            %離散モデルと連続体モデルの初期姿勢を一致させる
+            obj.joint_rad_y_ini=theta_yaw;
+            obj.joint_rad_p_ini=theta_pitch;
+            obj.joint_rad_y_now=theta_yaw;
+            obj.joint_rad_p_now=theta_pitch;
+            obj.joint_radlog_y=obj.joint_rad_y_ini;
+            obj.joint_radlog_p=obj.joint_rad_p_ini;
         end
         
         function updateModel(obj)
             snake_model = snakeModel(obj);
             if obj.dim == 2
+                %連続体モデルを解く
                 obj.snake_pathlog = [obj.snake_pathlog; snake_model(:,1:2)];
+                %離散化
+                %+微小Θ
+                obj.joint_rad_y_now = obj.joint_rad_y_now+obj.snake2RadY();
+                %初期値の設定
+                if size(obj.joint_radlog_y, 1)==1 && obj.joint_radlog_y(1, 1)==obj.joint_rad_y_ini
+                    if(obj.s - obj.s_last) >= obj.length_joint/2
+                        obj.joint_radlog_y(1, 1)=obj.joint_rad_y_now;
+                        obj.s_last = obj.s;
+                    end
+                else
+                    %一関節分進んだら角度を更新する
+                    if (obj.s - obj.s_last) >= obj.length_joint
+                        obj.joint_radlog_y = [obj.joint_radlog_y; obj.joint_rad_y_now];
+                        obj.s_last = obj.s;
+                    end
+                end
             elseif obj.dim == 3
                 obj.snake_pathlog = [obj.snake_pathlog; snake_model];
             end
         end
 
-        %連続体モデルの連立微分方程式 
+        %連続体モデルの連立微分方程式
         function model = snakeModel(obj)
             temp_s = obj.s + obj.s_vel;
             [~,serpen] = ode45(@obj.serpenOde, [obj.s temp_s], obj.Model_init);
@@ -112,9 +151,25 @@ classdef SnakeRobot < handle
         end
 
         %角度に変換
-        %function snake_rad = snake2Rad(obj, s_h_)
-        %    snake_rad = ;
-        %end
+        function joint_rad_y = snake2RadY(obj)
+            %間隔が1ずつなので粗くなるかも
+            ds=obj.s_vel;
+            %角度の回転方向が逆方向なのでマイナスをつける
+            joint_rad_y = -obj.snakeCurvatureYaw(obj.s)*ds;
+        end
+        
+        function calDiscretization(obj)
+            %離散化した座標logを求める
+            if obj.dim == 2
+                for i = 1:size(obj.joint_radlog_y, 1)
+                    temp_discretization_x = obj.discretization_pathlog(end, 1)+obj.length_joint*cos(obj.joint_radlog_y(i, 1));
+                    temp_discretization_y = obj.discretization_pathlog(end, 2)+obj.length_joint*sin(obj.joint_radlog_y(i, 1));
+                    obj.discretization_pathlog = [obj.discretization_pathlog;
+                                                  temp_discretization_x, temp_discretization_y, 0];
+                end
+            elseif obj.dim == 3
+            end
+        end
         
         %生成した経路と各パラメータの変換
         function path2Param(obj, v_, bias_yaw_center_)
