@@ -161,12 +161,19 @@ classdef SnakeRobot < handle
                 %離散化
                 %+微小Θ
                 obj.joint_rad_p_now = obj.joint_rad_p_now + obj.snake2RadP();
-                obj.joint_rad_y_now = obj.joint_rad_y_now + obj.snake2RadY();
-
+                temp_rady = obj.snake2RadY();
+                obj.joint_rad_y_now = obj.joint_rad_y_now + temp_rady;
+                disp([obj.s, obj.joint_rad_p_now, obj.joint_rad_y_now, temp_rady])
                 %現在計算中の関節
                 joint_num_now = size(obj.joint_radlog, 1)+1;
+                %0番目の関節(絶対角のときは必要(相対角の場合はいらない))
+                if (obj.s >= obj.length_joint) && (size(obj.joint_radlog, 1) == 0)
+                    obj.joint_radlog=obj.joint_rad_y_now;
+                    disp(obj.joint_radlog)
+                    obj.s_y_last=obj.s;
+                end
                 %奇数番目の関節
-                if ((rem(joint_num_now, 2) == 1) && ((obj.s-obj.s_p_last) >= 2*obj.length_joint))
+                if ((rem(joint_num_now, 2) == 0) && ((obj.s-obj.s_p_last) >= 2*obj.length_joint))
                     obj.joint_radlog = [obj.joint_radlog;
                                         obj.joint_rad_p_now];
                     disp([obj.s, obj.s_p_last, obj.joint_rad_p_now])
@@ -175,7 +182,7 @@ classdef SnakeRobot < handle
                 end
                 disp(obj.s)
                 %偶数番目の関節
-                if ((rem(joint_num_now, 2) == 0) && ((obj.s-obj.s_y_last) >= 2*obj.length_joint))
+                if ((rem(joint_num_now, 2) == 1) && ((obj.s-obj.s_y_last) >= 2*obj.length_joint))
                     obj.joint_radlog = [obj.joint_radlog;
                                         obj.joint_rad_y_now];
                     disp([obj.s, obj.s_y_last, obj.joint_rad_y_now])
@@ -219,7 +226,7 @@ classdef SnakeRobot < handle
         function curvature_pitch = snakeCurvaturePitch(obj, s_)
             curvature_pitch = 0;
         end
-
+         
         function torsion = snakeTorsion(obj, s_)
             torsion = 0;
         end
@@ -242,18 +249,25 @@ classdef SnakeRobot < handle
             L = double(int(sn, 0, 4*length_quater_));
         end
 
+        
         %角度に変換
         function joint_rad_p = snake2RadP(obj)
-            %間隔が1ずつなので粗くなるかも
             ds=obj.s_vel;
+            joint_rad_p=0;
             %角度の回転方向が逆方向なのでマイナスをつける
-            joint_rad_p = -obj.snakeCurvaturePitch(obj.s)*ds;
+            for i=obj.s-ds:0.001:obj.s
+                joint_rad_p=joint_rad_p-obj.snakeCurvaturePitch(i)*0.001;
+            end
         end
         function joint_rad_y = snake2RadY(obj)
-            %間隔が1ずつなので粗くなるかも
             ds=obj.s_vel;
             %角度の回転方向が逆方向なのでマイナスをつける
-            joint_rad_y = -obj.snakeCurvatureYaw(obj.s)*ds;
+            joint_rad_y=0;
+            for i=obj.s-ds:0.001:obj.s
+                joint_rad_y=joint_rad_y-obj.snakeCurvatureYaw(i)*0.001;
+            end
+
+            disp([ -obj.snakeCurvatureYaw(obj.s), ds])
         end
 
         
@@ -285,7 +299,7 @@ classdef SnakeRobot < handle
             %離散化した座標logを求める
             if obj.dim == 2
                 for i = 1:size(obj.joint_radlog, 1)
-                    if rem(i, 2) == 0
+                    if rem(i, 2) == 1
                         temp_discretization_x = obj.discretization_pathlog(end, 1)+2*obj.length_joint*cos(obj.joint_radlog(i, 1));
                         temp_discretization_y = obj.discretization_pathlog(end, 2)+2*obj.length_joint*sin(obj.joint_radlog(i, 1));
                         obj.discretization_pathlog = [obj.discretization_pathlog;

@@ -49,5 +49,6 @@ axis equal
 grid on
 hold off
 disp(size(snake.joint_radlog_y, 1))
+disp("a")
 disp(snake.joint_radlog*180/pi)
 %座標変換
