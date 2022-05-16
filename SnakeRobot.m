@@ -38,7 +38,10 @@ classdef SnakeRobot < handle
         discretization_pathlog
         discretization_noise_pathlog
         joint_noise
-        
+        %符号
+        joint_noise_sign
+        max_joint_noise = pi/2.5
+        min_joint_noise = -pi/2.5
     end
 
     methods
@@ -52,29 +55,29 @@ classdef SnakeRobot < handle
             theta_yaw = alpha_yaw_;
             obj.Model_C = zeros(3, 1);
             Identity_Matrix = eye(3).*-1;
-            Identity_Matrix(1,1)=1;
-            Rotation_Matrix = [cos(theta_pitch)*cos(theta_yaw)+sin(theta_pitch)*sin(theta_roll)*sin(theta_yaw),-cos(theta_pitch)*sin(theta_yaw)+sin(theta_pitch)*sin(theta_roll)*cos(theta_yaw),sin(theta_pitch)*cos(theta_roll);
-                               cos(theta_roll)*sin(theta_yaw),                                                  cos(theta_roll)*cos(theta_yaw),                                                -sin(theta_roll);
-                              -sin(theta_pitch)*cos(theta_yaw)+cos(theta_pitch)*sin(theta_roll)*sin(theta_yaw), sin(theta_pitch)*sin(theta_yaw)+cos(theta_pitch)*sin(theta_roll)*cos(theta_yaw),cos(theta_pitch)*cos(theta_roll)];
+            Identity_Matrix(1,1) = 1;
+            Rotation_Matrix = [cos(theta_pitch)*cos(theta_yaw) + sin(theta_pitch)*sin(theta_roll)*sin(theta_yaw), -cos(theta_pitch)*sin(theta_yaw) + sin(theta_pitch)*sin(theta_roll)*cos(theta_yaw), sin(theta_pitch)*cos(theta_roll);
+                               cos(theta_roll)*sin(theta_yaw),                                                     cos(theta_roll)*cos(theta_yaw),                                                   -sin(theta_roll);
+                              -sin(theta_pitch)*cos(theta_yaw) + cos(theta_pitch)*sin(theta_roll)*sin(theta_yaw),  sin(theta_pitch)*sin(theta_yaw) + cos(theta_pitch)*sin(theta_roll)*cos(theta_yaw), cos(theta_pitch)*cos(theta_roll)];
             Initial_Matrix = (Rotation_Matrix*Identity_Matrix)';
-            obj.Model_init=[obj.Model_C; reshape(Initial_Matrix, 9, 1)];
+            obj.Model_init = [obj.Model_C; reshape(Initial_Matrix, 9, 1)];
             if obj.dim == 2
-                obj.snake_pathlog=(obj.Model_C(1:2,1))';
+                obj.snake_pathlog = (obj.Model_C(1:2,1))';
             elseif obj.dim == 3
                 obj.snake_pathlog = obj.Model_C';
             end
             %離散モデルと連続体モデルのs=0を原点に一致させる
-            obj.discretization_pathlog=[0, 0, 0];
-            obj.discretization_noise_pathlog=[0, 0, 0];
+            obj.discretization_pathlog = [0, 0, 0];
+            obj.discretization_noise_pathlog = [0, 0, 0];
             %離散モデルと連続体モデルの初期姿勢を一致させる
-            obj.joint_rad_y_ini=theta_yaw;
-            obj.joint_rad_p_ini=theta_pitch;
-            obj.joint_rad_y_now=theta_yaw;
-            obj.joint_rad_p_now=theta_pitch;
+            obj.joint_rad_y_ini = theta_yaw;
+            obj.joint_rad_p_ini = theta_pitch;
+            obj.joint_rad_y_now = theta_yaw;
+            obj.joint_rad_p_now = theta_pitch;
             %obj.joint_radlog=0;
-            obj.joint_radlog_y=obj.joint_rad_y_ini;
-            obj.joint_radlog_p=obj.joint_rad_p_ini;
-            obj.s_y_last=obj.length_joint;
+            obj.joint_radlog_y = obj.joint_rad_y_ini;
+            obj.joint_radlog_p = obj.joint_rad_p_ini;
+            obj.s_y_last = obj.length_joint;
             %obj.joint_radlog=0;
         end
         function updateModel(obj)
@@ -93,9 +96,9 @@ classdef SnakeRobot < handle
                 joint_num_now = size(obj.joint_radlog, 1)+1;
                 %0番目の関節(絶対角のときは必要(相対角の場合はいらない))
                 if (obj.s >= obj.length_joint) && (size(obj.joint_radlog, 1) == 0)
-                    obj.joint_radlog=obj.joint_rad_y_now;
+                    obj.joint_radlog = obj.joint_rad_y_now;
                     disp(obj.joint_radlog)
-                    obj.s_y_last=obj.s;
+                    obj.s_y_last = obj.s;
                 end
                 %奇数番目の関節
                 if ((rem(joint_num_now, 2) == 0) && ((obj.s-obj.s_p_last) >= 2*obj.length_joint))
@@ -175,22 +178,22 @@ classdef SnakeRobot < handle
         end   
         %角度に変換
         function joint_rad_p = snake2RadP(obj)
-            ds=obj.s_vel;
-            joint_rad_p=0;
+            ds = obj.s_vel;
+            joint_rad_p = 0;
             %角度の回転方向が逆方向なのでマイナスをつける
-            for i=obj.s-ds:0.01:obj.s
-                joint_rad_p=joint_rad_p-obj.snakeCurvaturePitch(i)*0.01;
+            for i = obj.s-ds:0.01:obj.s
+                joint_rad_p=joint_rad_p - obj.snakeCurvaturePitch(i)*0.01;
             end
         end
         function joint_rad_y = snake2RadY(obj)
-            ds=obj.s_vel;
+            ds = obj.s_vel;
             %角度の回転方向が逆方向なのでマイナスをつける
-            joint_rad_y=0;
-            for i=obj.s-ds:0.01:obj.s
-                joint_rad_y=joint_rad_y-obj.snakeCurvatureYaw(i)*0.01;
+            joint_rad_y = 0;
+            for i = obj.s-ds:0.01:obj.s
+                joint_rad_y = joint_rad_y - obj.snakeCurvatureYaw(i)*0.01;
             end
 
-            disp([ -obj.snakeCurvatureYaw(obj.s), ds])
+            disp([-obj.snakeCurvatureYaw(obj.s), ds])
         end
         %ノイズ無し離散化
         function calDiscretization(obj)
@@ -198,8 +201,8 @@ classdef SnakeRobot < handle
             if obj.dim == 2
                 for i = 1:size(obj.joint_radlog, 1)
                     if rem(i, 2) == 1
-                        temp_discretization_x = obj.discretization_pathlog(end, 1)+2*obj.length_joint*cos(obj.joint_radlog(i, 1));
-                        temp_discretization_y = obj.discretization_pathlog(end, 2)+2*obj.length_joint*sin(obj.joint_radlog(i, 1));
+                        temp_discretization_x = obj.discretization_pathlog(end, 1) + 2*obj.length_joint*cos(obj.joint_radlog(i, 1));
+                        temp_discretization_y = obj.discretization_pathlog(end, 2) + 2*obj.length_joint*sin(obj.joint_radlog(i, 1));
                         obj.discretization_pathlog = [obj.discretization_pathlog;
                                                       temp_discretization_x, temp_discretization_y, 0];
                     end
@@ -210,18 +213,27 @@ classdef SnakeRobot < handle
         %ノイズ有り離散化
         function  calDiscretizationNoise(obj)
             %離散化した座標logを求める
-            
             if obj.dim == 2
-                for i = 1:size(obj.joint_radlog, 1)
-                    if size(obj.joint_noise, 1)==0
-                        for k = 1:size(obj.joint_radlog, 1)
-                            obj.joint_noise=[obj.joint_noise;
-                                             normrnd(obj.joint_radlog(k, 1), 0.1)];
-                        end
+                %初期ノイズを求める
+                if size(obj.joint_noise, 1) == 0
+                    for k = 1:size(obj.joint_radlog, 1)
+                        obj.joint_noise = [obj.joint_noise;
+                        normrnd(obj.joint_radlog(k, 1), 0.1)];
+                        obj.joint_noise_sign=[obj.joint_noise_sign;
+                                              1];
                     end
+                end
+                for i = 1:size(obj.joint_radlog, 1)
                     if rem(i, 2) == 1
-                        temp_discretization_noise_x = obj.discretization_noise_pathlog(end, 1)+2*obj.length_joint*cos(obj.joint_noise(i, 1));
-                        temp_discretization_noise_y = obj.discretization_noise_pathlog(end, 2)+2*obj.length_joint*sin(obj.joint_noise(i, 1));
+                        if obj.joint_noise(i, 1) <= obj.min_joint_noise
+                            obj.joint_noise_sign(i, 1) = 1;
+                        elseif obj.joint_noise(i, 1) >= obj.max_joint_noise
+                            obj.joint_noise_sign(i, 1) = -1;
+                        end
+                        obj.joint_noise(i, 1) = obj.joint_noise(i, 1) + obj.joint_noise_sign(i, 1)*pi / 90;
+                        disp(obj.joint_noise(i, 1))
+                        temp_discretization_noise_x = obj.discretization_noise_pathlog(end, 1) + 2*obj.length_joint*cos(obj.joint_noise(i, 1));
+                        temp_discretization_noise_y = obj.discretization_noise_pathlog(end, 2) + 2*obj.length_joint*sin(obj.joint_noise(i, 1));
                         obj.discretization_noise_pathlog = [obj.discretization_noise_pathlog;
                                                             temp_discretization_noise_x, temp_discretization_noise_y, 0];
                     end
@@ -229,10 +241,13 @@ classdef SnakeRobot < handle
             elseif obj.dim == 3
             end
         end
+        function logClear(obj)
+            obj.discretization_noise_pathlog=[0, 0, 0];
+        end
         %生成した経路と各パラメータの変換
         function path2Param(obj, v_, bias_yaw_center_)
-            obj.s_vel = 4*obj.length_quater*v_/obj.length_cycle;
-            obj.bias_yaw = obj.length_cycle*bias_yaw_center_/(4*obj.length_quater);
+            obj.s_vel = 4*obj.length_quater*v_ / obj.length_cycle;
+            obj.bias_yaw = obj.length_cycle*bias_yaw_center_ / (4*obj.length_quater);
             %{
             disp("bias_yaw")
             disp(obj.bias_yaw)
