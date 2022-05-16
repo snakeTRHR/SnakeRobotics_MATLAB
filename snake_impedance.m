@@ -1,12 +1,13 @@
 %蛇型ロボットの各パラメータ
 num_joint=5;
+%length_one_jointは整数じゃないとバグる
 length_one_joint=2.0;
-length_quarter=6;
+length_quarter=5.0;
 alpha_yaw=pi/3;
 alpha_pitch=0.0;
 dim=2;
 
-snake = SnakeRobot(num_joint, length_one_joint, length_quarter, alpha_yaw, alpha_pitch, dim);
+snake=SnakeRobot(num_joint, length_one_joint, length_quarter, alpha_yaw, alpha_pitch, dim);
 snake.changeVel(1);
 
 length_total=48;
@@ -15,36 +16,22 @@ length_total=48;
 for i=1:length_total
     snake.updateModel();
 end
-%snake.plotSnake();
-%離散化
-% joint_data=zeros(round(length_total/length_one_joint), 1);
-% for i=1:round(80/length_one_joint)
-%     joint_data(i,1)=2*length_one_joint*snake.snakeCurvatureYaw(i*length_one_joint);
-% end
 
-%離散化表示
-% pos_discretization=zeros(round(length_total/length_one_joint), 2);
-% for i=1:round(length_total/length_one_joint)
-%     if(i==1)
-%         pos_discretization(i,1)=length_one_joint*cos(joint_data(i, 1));
-%         pos_discretization(i,2)=length_one_joint*sin(joint_data(i, 1));
-%     else
-%         pos_discretization(i,1)=pos_discretization(i-1,1)+length_one_joint*cos(joint_data(i, 1));
-%         pos_discretization(i,2)=pos_discretization(i-1,2)+length_one_joint*sin(joint_data(i, 1));
-%     end
-% end
-% plot(snake.snake_pathlog(:,1), snake.snake_pathlog(:,2))
-% hold on
-% plot(pos_discretization(:,1),pos_discretization(:,2))
-% axis equal
-% grid on
-% hold off
 disp(snake.joint_radlog_y)
+%理想曲線を離散化
 snake.calDiscretization();
+
+%実際曲線を離散化
+snake.calDiscretizationNoise();
 plot(snake.snake_pathlog(:,1), snake.snake_pathlog(:,2))
 hold on
 plot(snake.discretization_pathlog(:,1), snake.discretization_pathlog(:,2))
 plot(snake.discretization_pathlog(:,1), snake.discretization_pathlog(:,2), 'o')
+plot(snake.discretization_noise_pathlog(:,1), snake.discretization_noise_pathlog(:,2))
+plot(snake.discretization_noise_pathlog(:,1), snake.discretization_noise_pathlog(:,2), 'o')
+for joint_num=1:size(snake.discretization_pathlog, 1)
+    plot([snake.discretization_pathlog(joint_num, 1), snake.discretization_noise_pathlog(joint_num, 1)], [snake.discretization_pathlog(joint_num, 2), snake.discretization_noise_pathlog(joint_num, 2)], 'g');
+end
 axis equal
 grid on
 hold off
