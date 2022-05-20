@@ -42,6 +42,22 @@ classdef SnakeRobot < handle
         joint_noise_sign
         max_joint_noise = pi/2.5
         min_joint_noise = -pi/2.5
+
+        impedance_x
+        impedance_dx
+        impedance_ddx
+
+        %インピーダンス制御の各パラメータ
+        impedance_m_d = 1;
+        impedance_d_d = 1;
+        impedance_k_d = 1;
+
+        impedance_x_d = 0;
+        impedance_dx_d = 0;
+        
+        impedance_m = 1;
+
+        impedance_f_u
     end
 
     methods
@@ -79,6 +95,11 @@ classdef SnakeRobot < handle
             obj.joint_radlog_p = obj.joint_rad_p_ini;
             obj.s_y_last = obj.length_joint;
             %obj.joint_radlog=0;
+
+            obj.impedance_x=zeros(obj.num_joint, 1);
+            obj.impedance_dx=zeros(obj.num_joint, 1);
+            obj.impedance_ddx=zeros(obj.num_joint, 1);
+            obj.impedance_f_u=zeros(obj.num_joint, 1);
         end
         function updateModel(obj)
             snake_model = snakeModel(obj);
@@ -239,6 +260,24 @@ classdef SnakeRobot < handle
                     end
                 end
             elseif obj.dim == 3
+            end
+        end
+        function calImpedance(obj, elapsed_time_)
+            for i = 1:obj.num_joint
+                impedance_x_prev = obj.impedance_x(i, 1);
+                impedance_dx_prev = obj.impedance_dx(i, 1);
+
+                %インピーダンス制御で用いるx, dx, ddxの計算
+                obj.impedance_x(i, 1) = norm(obj.discretization_noise_pathlog(i, :)-obj.discretization_pathlog(i, :));
+                obj.impedance_dx(i, 1) = (obj.impedance_x(i, 1)-impedance_x_prev)/elapsed_time_;
+                obj.impedance_ddx(i, 1) = (obj.impedance_dx(i, 1)-impedance_dx_prev)/elapsed_time_;
+
+                %直動一軸インピーダンス制御
+                obj.impedance_f_u(i, 1) = (obj.impedance_m-obj.impedance_m_d)*obj.impedance_ddx(i, 1) ...
+                                        - obj.impedance_d_d*obj.impedance_dx(i, 1) ...
+                                        - obj.impedance_k_d*obj.impedance_x(i, 1) ...
+                                        + obj.impedance_d_d*obj.impedance_dx_d ...
+                                        + obj.impedance_k_d*obj.impedance_x_d;
             end
         end
         function logClear(obj)
