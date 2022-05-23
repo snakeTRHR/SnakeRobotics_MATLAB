@@ -37,6 +37,7 @@ classdef SnakeRobot < handle
         s_p_last = 0;
         discretization_pathlog
         discretization_noise_pathlog
+        discretization_anglelog
         joint_noise
         %符号
         joint_noise_sign
@@ -58,6 +59,8 @@ classdef SnakeRobot < handle
         impedance_m = 1;
 
         impedance_f_u
+
+        impedance_tau
     end
 
     methods
@@ -96,10 +99,11 @@ classdef SnakeRobot < handle
             obj.s_y_last = obj.length_joint;
             %obj.joint_radlog=0;
 
-            obj.impedance_x=zeros(obj.num_joint, 1);
-            obj.impedance_dx=zeros(obj.num_joint, 1);
-            obj.impedance_ddx=zeros(obj.num_joint, 1);
-            obj.impedance_f_u=zeros(obj.num_joint, 1);
+            obj.impedance_x = zeros(obj.num_joint, 1);
+            obj.impedance_dx = zeros(obj.num_joint, 1);
+            obj.impedance_ddx = zeros(obj.num_joint, 1);
+            obj.impedance_f_u = zeros(obj.num_joint, 1);
+            obj.impedance_tau = zeros(obj.num_joint, 1);
         end
         function updateModel(obj)
             snake_model = snakeModel(obj);
@@ -271,13 +275,30 @@ classdef SnakeRobot < handle
                 obj.impedance_x(i, 1) = norm(obj.discretization_noise_pathlog(i, :)-obj.discretization_pathlog(i, :));
                 obj.impedance_dx(i, 1) = (obj.impedance_x(i, 1)-impedance_x_prev)/elapsed_time_;
                 obj.impedance_ddx(i, 1) = (obj.impedance_dx(i, 1)-impedance_dx_prev)/elapsed_time_;
-
+                if i == 1
+                    obj.discretization_anglelog(i, 1) = 0;
+                else
+                    obj.discretization_anglelog(i, 1) = acos(((2*obj.length_joint)^2 + obj.impedance_x(i, 1)^2 - norm(obj.discretization_noise_pathlog(i, :) - obj.discretization_pathlog(i-1, :)) ^2) / (2*2*obj.length_joint*obj.impedance_x(i, 1)));
+                    if obj.discretization_anglelog(i, 1) > (pi/2)
+                        obj.discretization_anglelog(i, 1) = obj.discretization_anglelog(i, 1) - (pi/2);
+                    else
+                        obj.discretization_anglelog(i, 1) = (pi/2) - obj.discretization_anglelog(i, 1);
+                    end
+                end
                 %直動一軸インピーダンス制御
                 obj.impedance_f_u(i, 1) = (obj.impedance_m-obj.impedance_m_d)*obj.impedance_ddx(i, 1) ...
                                         - obj.impedance_d_d*obj.impedance_dx(i, 1) ...
                                         - obj.impedance_k_d*obj.impedance_x(i, 1) ...
                                         + obj.impedance_d_d*obj.impedance_dx_d ...
                                         + obj.impedance_k_d*obj.impedance_x_d;
+                if i == 0
+                    obj.impedance_tau(i, 1) = 0;
+                else
+                    obj.impedance_tau(i, 1) = obj.impedance_f_u(i, 1)*2*obj.length_joint*cos(obj.discretization_anglelog(i, 1));
+                    if obj.discretization_pathlog(i, 1) - obj.discretization_pathlog(i, 2) < 0
+                        obj.impedance_tau(i, 1) = -obj.impedance_tau(i, 1);
+                    end
+                end
             end
         end
         function logClear(obj)

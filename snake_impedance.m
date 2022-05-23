@@ -49,7 +49,7 @@ for i = 1:1000
     snake.calImpedance(t_end);
     t_start = tic;
     for k = 1:num_joint
-        disp([snake.impedance_x(k, 1), snake.impedance_dx(k, 1), snake.impedance_ddx(k, 1), snake.impedance_f_u(k, 1) t_end])
+        disp([snake.impedance_x(k, 1), snake.impedance_dx(k, 1), snake.impedance_ddx(k, 1), snake.impedance_f_u(k, 1), snake.discretization_anglelog(k, 1)*180/pi, snake.impedance_tau(k, 1)])
     end
     axis equal
     grid on
