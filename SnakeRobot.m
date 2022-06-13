@@ -380,5 +380,10 @@ classdef SnakeRobot < handle
                 data = obj.snake_pathlog(:, 1:3);
             end
         end
+
+        function [head_x, head_y] = getHeadPos(obj)
+            head_x = obj.snake_pathlog(end, 1);
+            head_y = obj.snake_pathlog(end, 2);
+        end
     end
 end
