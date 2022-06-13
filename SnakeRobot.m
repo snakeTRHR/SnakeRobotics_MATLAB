@@ -61,6 +61,12 @@ classdef SnakeRobot < handle
         impedance_f_u
 
         impedance_tau
+
+        %離散化に用いるための曲率履歴
+        curvature_yaw_log
+        curvature_pitch_log
+
+        joint_pos
     end
 
     methods
@@ -104,45 +110,19 @@ classdef SnakeRobot < handle
             obj.impedance_ddx = zeros(obj.num_joint, 1);
             obj.impedance_f_u = zeros(obj.num_joint, 1);
             obj.impedance_tau = zeros(obj.num_joint, 1);
+
+            obj.curvature_yaw_log = zeros(obj.num_joint*obj.length_joint, 1);
+            obj.curvature_pitch_log = zeros(obj.num_joint*obj.length_joint, 1);
+
+            obj.joint_radlog = zeros(obj.num_joint, 1);
         end
         function updateModel(obj)
             snake_model = snakeModel(obj);
             if obj.dim == 2
                 %連続体モデルを解く
                 obj.snake_pathlog = [obj.snake_pathlog; snake_model(:,1:2)];
-
                 %離散化
-                %+微小Θ
-                obj.joint_rad_p_now = obj.joint_rad_p_now + obj.snake2RadP();
-                temp_rady = obj.snake2RadY();
-                obj.joint_rad_y_now = obj.joint_rad_y_now + temp_rady;
-                disp([obj.s, obj.joint_rad_p_now, obj.joint_rad_y_now, temp_rady])
-                %現在計算中の関節
-                joint_num_now = size(obj.joint_radlog, 1)+1;
-                %0番目の関節(絶対角のときは必要(相対角の場合はいらない))
-                if (obj.s >= obj.length_joint) && (size(obj.joint_radlog, 1) == 0)
-                    obj.joint_radlog = obj.joint_rad_y_now;
-                    disp(obj.joint_radlog)
-                    obj.s_y_last = obj.s;
-                end
-                %奇数番目の関節
-                if ((rem(joint_num_now, 2) == 0) && ((obj.s-obj.s_p_last) >= 2*obj.length_joint))
-                    obj.joint_radlog = [obj.joint_radlog;
-                                        obj.joint_rad_p_now];
-                    disp([obj.s, obj.s_p_last, obj.joint_rad_p_now])
-                    %obj.joint_rad_p_now = 0;
-                    obj.s_p_last = obj.s;
-                end
-                disp(obj.s)
-                %偶数番目の関節
-                if ((rem(joint_num_now, 2) == 1) && ((obj.s-obj.s_y_last) >= 2*obj.length_joint))
-                    obj.joint_radlog = [obj.joint_radlog;
-                                        obj.joint_rad_y_now];
-                    disp([obj.s, obj.s_y_last, obj.joint_rad_y_now])
-                    disp(obj.joint_radlog)
-                    %obj.joint_rad_y_now = 0;
-                    obj.s_y_last = obj.s;
-                end
+                obj.snakeCurvatureLog(); 
             elseif obj.dim == 3
                 obj.snake_pathlog = [obj.snake_pathlog; snake_model];
             end
@@ -171,9 +151,13 @@ classdef SnakeRobot < handle
                     obj.snakeCurvaturePitch(t)*y(6)-obj.snakeTorsion(t)*y(9)];
         end
  
+        function snakeCurvatureLog(obj)
+            %体形曲線分の曲率を保存
+            obj.curvature_yaw_log = [obj.curvature_yaw_log(2:end,1); obj.snakeCurvatureYaw(obj.s)];
+            obj.curvature_pitch_log = [obj.curvature_pitch_log(2:end, 1); obj.snakeCurvaturePitch(obj.s)];
+        end
         function curvature_yaw = snakeCurvatureYaw(obj, s_)
             curvature_yaw = obj.alpha_yaw*pi*sin(s_*pi/(2*obj.length_quater))/(2*obj.length_quater)+obj.bias_yaw;
-            disp([curvature_yaw, obj.alpha_yaw, obj.length_quater, (2*obj.length_quater), sin(s_*pi/(2*obj.length_quater))])
         end
 
         function curvature_pitch = snakeCurvaturePitch(obj, s_)
@@ -202,36 +186,81 @@ classdef SnakeRobot < handle
             L = double(int(sn, 0, 4*length_quater_));
         end   
         %角度に変換
-        function joint_rad_p = snake2RadP(obj)
+        function joint_rad_p = snake2RadP(obj, s_log_)
             ds = obj.s_vel;
             joint_rad_p = 0;
             %角度の回転方向が逆方向なのでマイナスをつける
-            for i = obj.s-ds:0.01:obj.s
-                joint_rad_p=joint_rad_p - obj.snakeCurvaturePitch(i)*0.01;
+            for i = 0:0.01:ds
+                joint_rad_p=joint_rad_p - obj.curvature_pitch_log(s_log_, 1)*0.01;
             end
         end
-        function joint_rad_y = snake2RadY(obj)
+        function joint_rad_y = snake2RadY(obj, s_log_)
             ds = obj.s_vel;
             %角度の回転方向が逆方向なのでマイナスをつける
             joint_rad_y = 0;
-            for i = obj.s-ds:0.01:obj.s
-                joint_rad_y = joint_rad_y - obj.snakeCurvatureYaw(i)*0.01;
+            for i = 0:0.01:ds
+                joint_rad_y = joint_rad_y - obj.curvature_yaw_log(s_log_, 1)*0.01;
             end
-
-            disp([-obj.snakeCurvatureYaw(obj.s), ds])
         end
         %ノイズ無し離散化
         function calDiscretization(obj)
             %離散化した座標logを求める
-            if obj.dim == 2
-                for i = 1:size(obj.joint_radlog, 1)
-                    if rem(i, 2) == 1
-                        temp_discretization_x = obj.discretization_pathlog(end, 1) + 2*obj.length_joint*cos(obj.joint_radlog(i, 1));
-                        temp_discretization_y = obj.discretization_pathlog(end, 2) + 2*obj.length_joint*sin(obj.joint_radlog(i, 1));
-                        obj.discretization_pathlog = [obj.discretization_pathlog;
-                                                      temp_discretization_x, temp_discretization_y, 0];
+            %ロボットの長さ分以上sがあるときに離散化可能
+            if (obj.dim == 2) && (obj.s >= (obj.num_joint*obj.length_joint))
+                joint_num_now = 1;
+                disp(obj.s)
+                %先頭からなので逆順
+                obj.s_p_last = obj.num_joint*obj.length_joint;
+                obj.s_y_last = obj.num_joint*obj.length_joint;
+                for s_ = obj.num_joint*obj.length_joint:-1:1
+                    %+微小Θ
+                    obj.joint_rad_p_now = obj.joint_rad_p_now + obj.snake2RadP(s_);
+                    obj.joint_rad_y_now = obj.joint_rad_y_now + obj.snake2RadY(s_);
+                  
+                    %現在計算中の関節
+%                     joint_num_now = size(obj.joint_radlog, 1)+1;
+                    %0番目の関節(絶対角のときは必要(相対角の場合はいらない))
+%                     if (obj.s >= obj.length_joint) && (size(obj.joint_radlog, 1) == 0)
+%                         obj.joint_radlog = obj.joint_rad_y_now;
+%                         obj.s_y_last = obj.s;
+%                     end
+                    %奇数番目の関節
+                    if ((rem(joint_num_now, 2) == 0) && ((obj.s_p_last-s_) >= 2*obj.length_joint))
+                        obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_p_now;
+                        disp([joint_num_now obj.joint_rad_p_now])
+                        obj.joint_rad_p_now = 0;
+                        obj.s_p_last = s_;
+                        joint_num_now = joint_num_now + 1;
+                    end
+                    %偶数番目の関節
+                    if ((rem(joint_num_now, 2) == 1) && ((obj.s_y_last-s_) >= 2*obj.length_joint))
+                        obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_y_now;
+                        disp([joint_num_now obj.joint_rad_y_now])
+                        obj.joint_rad_y_now = 0;
+                        obj.s_y_last = s_;
+                        joint_num_now = joint_num_now + 1;
                     end
                 end
+                %奇数番目の関節
+                if (rem(joint_num_now, 2) == 0)
+                    obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_p_now;
+                    disp([joint_num_now obj.joint_rad_p_now])
+                    obj.joint_rad_p_now = 0;
+                end
+                %偶数番目の関節
+                if (rem(joint_num_now, 2) == 1)
+                    obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_y_now;
+                    disp([joint_num_now obj.joint_rad_y_now])
+                    obj.joint_rad_p_now = 0;
+                end
+%                 for i = 1:size(obj.joint_radlog, 1)
+%                     if rem(i, 2) == 1
+%                         temp_discretization_x = obj.discretization_pathlog(end, 1) + 2*obj.length_joint*cos(obj.joint_radlog(i, 1));
+%                         temp_discretization_y = obj.discretization_pathlog(end, 2) + 2*obj.length_joint*sin(obj.joint_radlog(i, 1));
+%                         obj.discretization_pathlog = [obj.discretization_pathlog;
+%                                                       temp_discretization_x, temp_discretization_y, 0];
+%                     end
+%                 end
             elseif obj.dim == 3
             end
         end
