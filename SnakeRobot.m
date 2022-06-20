@@ -157,11 +157,13 @@ classdef SnakeRobot < handle
             obj.curvature_pitch_log = [obj.curvature_pitch_log(2:end, 1); obj.snakeCurvaturePitch(obj.s)];
         end
         function curvature_yaw = snakeCurvatureYaw(obj, s_)
-            curvature_yaw = obj.alpha_yaw*pi*sin(s_*pi/(2*obj.length_quater))/(2*obj.length_quater)+obj.bias_yaw;
+%           curvature_yaw = obj.alpha_yaw*pi*sin(s_*pi/(2*obj.length_quater))/(2*obj.length_quater)+obj.bias_yaw;
+            curvature_yaw = (8.94/(4*obj.length_quater))*sin(2*pi*s_)+obj.bias_yaw;
         end
 
         function curvature_pitch = snakeCurvaturePitch(obj, s_)
-            curvature_pitch = 0;
+%           curvature_pitch = 0;
+            curvature_pitch = (-4.47/(4*obj.length_quater))+(6.19/(4*obj.length_quater))*cos(1.42*cos(2*pi*s_));
         end
          
         function torsion = snakeTorsion(obj, s_)
@@ -196,8 +198,8 @@ classdef SnakeRobot < handle
         end
         function joint_rad_y = snake2RadY(obj, s_log_)
             ds = obj.s_vel;
-            %角度の回転方向が逆方向なのでマイナスをつける
             joint_rad_y = 0;
+            %角度の回転方向が逆方向なのでマイナスをつける
             for i = 0:0.01:ds
                 joint_rad_y = joint_rad_y - obj.curvature_yaw_log(s_log_, 1)*0.01;
             end
@@ -206,7 +208,8 @@ classdef SnakeRobot < handle
         function calDiscretization(obj)
             %離散化した座標logを求める
             %ロボットの長さ分以上sがあるときに離散化可能
-            if (obj.dim == 2) && (obj.s >= (obj.num_joint*obj.length_joint))
+%             if (obj.dim == 2) && (obj.s >= (obj.num_joint*obj.length_joint))
+            if obj.s >= (obj.num_joint*obj.length_joint)
                 joint_num_now = 1;
                 disp(obj.s)
                 %先頭からなので逆順
@@ -261,8 +264,9 @@ classdef SnakeRobot < handle
 %                                                       temp_discretization_x, temp_discretization_y, 0];
 %                     end
 %                 end
-            elseif obj.dim == 3
-            end
+
+%             elseif obj.dim == 3
+             end
         end
         %ノイズ有り離散化
         function  calDiscretizationNoise(obj)

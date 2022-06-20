@@ -14,7 +14,7 @@ publish_head_pos = rosmessage(pub_head_pos);
 
 snake=SnakeRobot(num_joint, length_one_joint, length_quarter, alpha_yaw, alpha_pitch, dim);
 snake.changeVel(1);
-r = rosrate(5);
+r = rosrate(30);
 reset(r)
 
 for i = 1:1000
