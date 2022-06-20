@@ -70,14 +70,14 @@ classdef SnakeRobot < handle
     end
 
     methods
-        function obj = SnakeRobot(num_joint_, length_joint, length_quater_, alpha_yaw_, alpha_pitch_, dim_)
+        function obj = SnakeRobot(num_joint_, length_joint, length_quater_, alpha_yaw_, alpha_pitch_, alpha_yaw_ini_, alpha_pitch_ini_, dim_)
             obj.num_joint = num_joint_;
             obj.length_joint = length_joint;
             obj.dim = dim_;
             obj.changeSnakeParam(alpha_yaw_, alpha_pitch_, length_quater_);
             theta_roll = 0;
-            theta_pitch = -1*alpha_pitch_;
-            theta_yaw = alpha_yaw_;
+            theta_pitch = -1*alpha_pitch_ini_;
+            theta_yaw = alpha_yaw_ini_;
             obj.Model_C = zeros(3, 1);
             Identity_Matrix = eye(3).*-1;
             Identity_Matrix(1,1) = 1;
@@ -124,7 +124,10 @@ classdef SnakeRobot < handle
                 %離散化
                 obj.snakeCurvatureLog(); 
             elseif obj.dim == 3
+                %連続体モデルを解く
                 obj.snake_pathlog = [obj.snake_pathlog; snake_model];
+                %離散化
+                obj.snakeCurvatureLog(); 
             end
         end
         %連続体モデルの連立微分方程式
@@ -158,12 +161,14 @@ classdef SnakeRobot < handle
         end
         function curvature_yaw = snakeCurvatureYaw(obj, s_)
 %           curvature_yaw = obj.alpha_yaw*pi*sin(s_*pi/(2*obj.length_quater))/(2*obj.length_quater)+obj.bias_yaw;
-            curvature_yaw = (8.94/(4*obj.length_quater))*sin(2*pi*s_)+obj.bias_yaw;
+%           curvature_yaw = (8.94/(4*obj.length_quater))*sin(2*pi*s_)+obj.bias_yaw;
+            curvature_yaw = (obj.alpha_yaw*pi*sin(2*pi*s_*pi/(2*obj.length_quater)))/(2*obj.length_quater) + obj.bias_yaw;
         end
 
         function curvature_pitch = snakeCurvaturePitch(obj, s_)
 %           curvature_pitch = 0;
-            curvature_pitch = (-4.47/(4*obj.length_quater))+(6.19/(4*obj.length_quater))*cos(1.42*cos(2*pi*s_));
+%           curvature_pitch = (-4.47/(4*obj.length_quater))+(6.19/(4*obj.length_quater))*cos(1.42*cos(2*pi*s_));
+            curvature_pitch = (obj.alpha_pitch*pi*sin(4*pi*s_*pi/(2*obj.length_quater)));
         end
          
         function torsion = snakeTorsion(obj, s_)
@@ -211,7 +216,6 @@ classdef SnakeRobot < handle
 %             if (obj.dim == 2) && (obj.s >= (obj.num_joint*obj.length_joint))
             if obj.s >= (obj.num_joint*obj.length_joint)
                 joint_num_now = 1;
-                disp(obj.s)
                 %先頭からなので逆順
                 obj.s_p_last = obj.num_joint*obj.length_joint;
                 obj.s_y_last = obj.num_joint*obj.length_joint;
@@ -230,7 +234,6 @@ classdef SnakeRobot < handle
                     %奇数番目の関節
                     if ((rem(joint_num_now, 2) == 0) && ((obj.s_p_last-s_) >= 2*obj.length_joint))
                         obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_p_now;
-                        disp([joint_num_now obj.joint_rad_p_now])
                         obj.joint_rad_p_now = 0;
                         obj.s_p_last = s_;
                         joint_num_now = joint_num_now + 1;
@@ -238,7 +241,6 @@ classdef SnakeRobot < handle
                     %偶数番目の関節
                     if ((rem(joint_num_now, 2) == 1) && ((obj.s_y_last-s_) >= 2*obj.length_joint))
                         obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_y_now;
-                        disp([joint_num_now obj.joint_rad_y_now])
                         obj.joint_rad_y_now = 0;
                         obj.s_y_last = s_;
                         joint_num_now = joint_num_now + 1;
@@ -247,13 +249,11 @@ classdef SnakeRobot < handle
                 %奇数番目の関節
                 if (rem(joint_num_now, 2) == 0)
                     obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_p_now;
-                    disp([joint_num_now obj.joint_rad_p_now])
                     obj.joint_rad_p_now = 0;
                 end
                 %偶数番目の関節
                 if (rem(joint_num_now, 2) == 1)
                     obj.joint_radlog(joint_num_now, 1) = obj.joint_rad_y_now;
-                    disp([joint_num_now obj.joint_rad_y_now])
                     obj.joint_rad_p_now = 0;
                 end
 %                 for i = 1:size(obj.joint_radlog, 1)
@@ -289,7 +289,6 @@ classdef SnakeRobot < handle
                             obj.joint_noise_sign(i, 1) = -1;
                         end
                         obj.joint_noise(i, 1) = obj.joint_noise(i, 1) + obj.joint_noise_sign(i, 1)*pi / 90;
-                        disp(obj.joint_noise(i, 1))
                         temp_discretization_noise_x = obj.discretization_noise_pathlog(end, 1) + 2*obj.length_joint*cos(obj.joint_noise(i, 1));
                         temp_discretization_noise_y = obj.discretization_noise_pathlog(end, 2) + 2*obj.length_joint*sin(obj.joint_noise(i, 1));
                         obj.discretization_noise_pathlog = [obj.discretization_noise_pathlog;
@@ -343,11 +342,6 @@ classdef SnakeRobot < handle
         function path2Param(obj, v_, bias_yaw_center_)
             obj.s_vel = 4*obj.length_quater*v_ / obj.length_cycle;
             obj.bias_yaw = obj.length_cycle*bias_yaw_center_ / (4*obj.length_quater);
-            %{
-            disp("bias_yaw")
-            disp(obj.bias_yaw)
-            disp("bias_yaw_end")
-            %}
         end
         
         function changeVel(obj, s_vel_)
